@@ -58,6 +58,7 @@ public:
   bool
   validateParameters(const ndn::mgmt::ControlParameters& parameters)
   {
+    std::cout<<"Validating Parameters"<<std::endl;
     const RepoCommandParameter* castParams =
       dynamic_cast<const RepoCommandParameter*>(&parameters);
     BOOST_ASSERT(castParams != nullptr);
@@ -66,6 +67,7 @@ public:
       command.validateRequest(*castParams);
     }
     catch (const RepoCommand::ArgumentError& ae) {
+      std::cout<<" RepoCommand::ArgumentError :"<<ae.what()<<std::endl;
       return false;
     }
     return true;

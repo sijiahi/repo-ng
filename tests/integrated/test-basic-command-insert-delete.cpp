@@ -149,6 +149,7 @@ Fixture<T>::onInsertData(const Interest& interest, const Data& data)
   response.wireDecode(data.getContent().blockFromValue());
   int statusCode = response.getCode();
   BOOST_CHECK_EQUAL(statusCode, 100);
+  std::cout<<"Got Insert Response with status Code"<<statusCode<<std::endl;
 }
 
 template<class T> void
@@ -166,6 +167,7 @@ Fixture<T>::onDeleteData(const Interest& interest, const Data& data)
 template<class T> void
 Fixture<T>::onInsertTimeout(const Interest& interest)
 {
+  std::cerr<<"Insertcommandtimrout"<<interest.getName()<<std::endl;
   BOOST_ERROR("Insert command timeout");
 }
 

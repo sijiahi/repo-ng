@@ -120,6 +120,7 @@ Publisher::run()
 void
 Publisher::autoGenerate()
 {
+  std::cout<<"Generating data"<<std::endl;
   ndn::Name name = dataPrefix;
   name.appendNumber(m_randomDist(ndn::random::getRandomNumberEngine()));
   auto data = createData(name);
@@ -181,9 +182,11 @@ main(int argc, char* argv[])
     switch (opt) {
     case 'd':
       {
+        std::cout<<"Generating name"<<std::endl;
         generator.dataPrefix = ndn::Name(std::string(optarg));
         generator.mode = AUTO;
         isAuto = true;
+        std::cout<<"Set to Auto mode"<<std::endl;
       }
       break;
     case 'f':

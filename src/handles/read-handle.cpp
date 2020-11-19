@@ -53,13 +53,16 @@ ReadHandle::connectAutoListen()
 void
 ReadHandle::onInterest(const Name& prefix, const Interest& interest)
 {
+  std::cout<<"Received Interest " << interest.getName()<<std::endl;
   NDN_LOG_DEBUG("Received Interest " << interest.getName());
   std::shared_ptr<ndn::Data> data = m_storageHandle.readData(interest);
   if (data != nullptr) {
     NDN_LOG_DEBUG("Put Data: " << *data);
+    std::cout<<"Put Data: " << *data<<std::endl;
     m_face.put(*data);
-  }
+  }   
   else {
+    std::cout<<"No data for " << interest.getName()<<std::endl;
     NDN_LOG_DEBUG("No data for " << interest.getName());
   }
 }
@@ -74,6 +77,7 @@ ReadHandle::onRegisterFailed(const Name& prefix, const std::string& reason)
 void
 ReadHandle::listen(const Name& prefix)
 {
+  std::cout<<"Filtering interest for prefix: "<<prefix<<std::endl;
   ndn::InterestFilter filter(prefix);
   m_face.setInterestFilter(filter,
                            std::bind(&ReadHandle::onInterest, this, _1, _2),

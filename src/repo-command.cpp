@@ -50,14 +50,14 @@ RepoCommand::FieldValidator::FieldValidator()
   , m_optional(REPO_PARAMETER_UBOUND)
 {
 }
-
+//////////////////Defines fields required for each Command
 InsertCommand::InsertCommand()
 : RepoCommand()
 {
   m_requestValidator
     .required(REPO_PARAMETER_NAME)
-    .required(REPO_PARAMETER_START_BLOCK_ID)
-    .required(REPO_PARAMETER_END_BLOCK_ID);
+    .optional(REPO_PARAMETER_START_BLOCK_ID)
+    .optional(REPO_PARAMETER_END_BLOCK_ID);
 }
 
 InsertCheckCommand::InsertCheckCommand()

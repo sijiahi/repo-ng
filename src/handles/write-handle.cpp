@@ -43,12 +43,14 @@ WriteHandle::WriteHandle(Face& face, RepoStorage& storageHandle, ndn::mgmt::Disp
   , m_noEndTimeout(NOEND_TIMEOUT)
   , m_interestLifetime(DEFAULT_INTEREST_LIFETIME)
 {
+  std::cout<<"Initializing Write Handle" << std::endl;
+  NDN_LOG_DEBUG("Initializing Write Handle" << std::endl);
   dispatcher.addControlCommand<RepoCommandParameter>(ndn::PartialName("insert"),
     makeAuthorization(),
     std::bind(&WriteHandle::validateParameters<InsertCommand>, this, _1),
     std::bind(&WriteHandle::handleInsertCommand, this, _1, _2, _3, _4));
 
-  dispatcher.addControlCommand<RepoCommandParameter>(ndn::PartialName("insert check"),
+  dispatcher.addControlCommand<RepoCommandParameter>(ndn::PartialName("insertcheck"),
     makeAuthorization(),
     std::bind(&WriteHandle::validateParameters<InsertCheckCommand>, this, _1),
     std::bind(&WriteHandle::handleCheckCommand, this, _1, _2, _3, _4));
@@ -65,13 +67,16 @@ WriteHandle::handleInsertCommand(const Name& prefix, const Interest& interest,
                                  const ndn::mgmt::ControlParameters& parameter,
                                  const ndn::mgmt::CommandContinuation& done)
 {
+  std::cout<<"Handling Insert command for Interest: "<<interest<<std::endl;
   RepoCommandParameter* repoParameter =
     dynamic_cast<RepoCommandParameter*>(const_cast<ndn::mgmt::ControlParameters*>(&parameter));
 
   if (repoParameter->hasStartBlockId() || repoParameter->hasEndBlockId()) {
+    std::cout<<"processSegmentedInsertCommand"<<std::endl;
     processSegmentedInsertCommand(interest, *repoParameter, done);
   }
   else {
+    std::cout<<"processSingleInsertCommand"<<std::endl;
     processSingleInsertCommand(interest, *repoParameter, done);
   }
   if (repoParameter->hasInterestLifetime())
@@ -130,6 +135,7 @@ WriteHandle::processSingleInsertCommand(const Interest& interest, RepoCommandPar
   Interest fetchInterest(parameter.getName());
   fetchInterest.setCanBePrefix(m_canBePrefix);
   fetchInterest.setInterestLifetime(m_interestLifetime);
+  std::cout<<"Single Insert, Fetch interest"<<fetchInterest.getName()<<std::endl;
   face.expressInterest(fetchInterest,
                        std::bind(&WriteHandle::onData, this, _1, _2, processId),
                        std::bind(&WriteHandle::onTimeout, this, _1, processId), // Nack
@@ -165,18 +171,20 @@ WriteHandle::segInit(ProcessId processId, const RepoCommandParameter& parameter)
   options.initCwnd = initialCredit;
   options.interestLifetime = m_interestLifetime;
   options.maxTimeout = m_maxTimeout;
+  std::cout<<"Sending Fetch interest"<<interest.getName()<<std::endl;
   auto fetcher = ndn::util::SegmentFetcher::start(face, interest, m_validator, options);
   fetcher->onError.connect([] (uint32_t errorCode, const std::string& errorMsg)
                            {NDN_LOG_ERROR("Error: " << errorMsg);});
-  fetcher->afterSegmentValidated.connect([this, &fetcher, &processId] (const Data& data)
+  fetcher->afterSegmentValidated.connect([this, &fetcher, processId] (const Data& data)
                                          {onSegmentData(*fetcher, data, processId);});
-  fetcher->afterSegmentTimedOut.connect([this, &fetcher, &processId] ()
+  fetcher->afterSegmentTimedOut.connect([this, &fetcher, processId] ()
                                         {onSegmentTimeout(*fetcher, processId);});
 }
 
 void
 WriteHandle::onSegmentData(ndn::util::SegmentFetcher& fetcher, const Data& data, ProcessId processId)
 {
+  std::cout<<"received Fetched data"<<data<<"processId"<<processId<<std::endl;
   auto it = m_processes.find(processId);
   if (it == m_processes.end()) {
     fetcher.stop();
@@ -185,7 +193,6 @@ WriteHandle::onSegmentData(ndn::util::SegmentFetcher& fetcher, const Data& data,
 
   RepoCommandResponse& response = it->second.response;
 
-  //insert data
   if (storageHandle.insertData(data)) {
     response.setInsertNum(response.getInsertNum() + 1);
   }
@@ -231,20 +238,27 @@ WriteHandle::onSegmentTimeout(ndn::util::SegmentFetcher& fetcher, ProcessId proc
   }
 }
 
+//Segmented Intert Command:
+//
 void
 WriteHandle::processSegmentedInsertCommand(const Interest& interest, RepoCommandParameter& parameter,
                                            const ndn::mgmt::CommandContinuation& done)
 {
+  std::cout<<"parameter.hasEndBlockId()"<<parameter.hasEndBlockId()<<std::endl;
   if (parameter.hasEndBlockId()) {
+    
     //normal fetch segment
     SegmentNo startBlockId = parameter.hasStartBlockId() ? parameter.getStartBlockId() : 0;
+    std::cout<<"startBlockId"<<startBlockId<<std::endl;
     SegmentNo endBlockId = parameter.getEndBlockId();
+    std::cout<<"endBlockId"<<endBlockId<<std::endl;
     if (startBlockId > endBlockId) {
       done(negativeReply("Malformed Command", 403));
       return;
     }
 
     ProcessId processId = ndn::random::generateWord64();
+    std::cout<<"Tagged as Process: "<<processId<<std::endl;
     ProcessInfo& process = m_processes[processId];
     RepoCommandResponse& response = process.response;
     response.setCode(100);
@@ -252,8 +266,14 @@ WriteHandle::processSegmentedInsertCommand(const Interest& interest, RepoCommand
     response.setInsertNum(0);
     response.setStartBlockId(startBlockId);
     response.setEndBlockId(endBlockId);
+    //std::cout<<"Prepared command response: "<<response<<std::endl;
+    //response.wireEncode();
+   
     response.setBody(response.wireEncode());
-    done(response);
+     done(response);
+    std::cout<<"Response: "<<response.getBody()<<std::endl;
+    //done(interest(response));
+    
 
     //300 means data fetching is in progress
     response.setCode(300);

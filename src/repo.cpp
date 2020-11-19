@@ -75,6 +75,7 @@ parseConfig(const std::string& configPath)
   bool isTcpBulkEnabled = false;
   std::string host = "localhost";
   std::string port = "7376";
+
   if (tcpBulkInsert) {
     for (const auto& section : *tcpBulkInsert) {
       isTcpBulkEnabled = true;
@@ -88,6 +89,7 @@ parseConfig(const std::string& configPath)
         BOOST_THROW_EXCEPTION(Repo::Error("Unrecognized '" + section.first + "' option in 'tcp_bulk_insert' section in "
                                           "configuration file '"+ configPath +"'"));
     }
+    std::cout<<"Listening on: "<<host<<" Port: "<<port<<std::endl;
   }
   if (isTcpBulkEnabled) {
     repoConfig.tcpBulkInsertEndpoints.push_back(std::make_pair(host, port));
@@ -119,6 +121,7 @@ Repo::Repo(boost::asio::io_service& ioService, const RepoConfig& config)
   , m_deleteHandle(m_face, m_storageHandle, m_dispatcher, m_scheduler, m_validator)
   , m_tcpBulkInsertHandle(ioService, m_storageHandle)
 {
+ 
   this->enableValidation();
   m_storageHandle.notifyAboutExistingData();
 }
@@ -138,9 +141,11 @@ Repo::enableListening()
 {
   for (const ndn::Name& dataPrefix : m_config.dataPrefixes) {
     // ReadHandle performs prefix registration internally.
+
     m_readHandle.listen(dataPrefix);
   }
   for (const ndn::Name& cmdPrefix : m_config.repoPrefixes) {
+    std::cout<<"Repo Register cmd Prefix: "<<cmdPrefix<<std::endl;
     m_face.registerPrefix(cmdPrefix, nullptr,
       [] (const Name& cmdPrefix, const std::string& reason) {
         NDN_LOG_DEBUG("Command prefix " << cmdPrefix << " registration error: " << reason);

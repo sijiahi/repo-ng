@@ -94,7 +94,10 @@ private:
 
   void
   onInsertCommandResponse(const ndn::Interest& interest, const ndn::Data& data);
-
+  //////////////////////
+  void
+  onInsertCommandNack(const ndn::Interest& interest);
+///////////////////////////////
   void
   onInsertCommandTimeout(const ndn::Interest& interest);
 
@@ -121,6 +124,8 @@ private:
 
   void
   onCheckCommandResponse(const ndn::Interest& interest, const ndn::Data& data);
+
+void onCheckCommandNack(const ndn::Interest& interest);
 
   void
   onCheckCommandTimeout(const ndn::Interest& interest);
@@ -231,37 +236,56 @@ NdnPutFile::run()
 void
 NdnPutFile::onRegisterSuccess(const Name& prefix)
 {
+  std::cout<<"Register prefix"<<prefix<<"Success"<<std::endl;
   startInsertCommand();
 }
 
 void
 NdnPutFile::startInsertCommand()
 {
+  //** Insert Command must set 3 arguments:
+  //1 PrefixName(setName(String))
+  //2 StartBlockId;
+  //2 EndblockId;
   RepoCommandParameter parameters;
   parameters.setName(m_dataPrefix);
+//****Need to set Start Block ID and End Block Id to enable Data Transmission!!!!
   if (!isSingle) {
     parameters.setStartBlockId(0);
+    parameters.setEndBlockId(1);
   }
 
   ndn::Interest commandInterest = generateCommandInterest(repoPrefix, "insert", parameters);
+  std::cout<<"Expressing interest for prefix"<<commandInterest.getName().toUri()<<std::endl;
   m_face.expressInterest(commandInterest,
                          bind(&NdnPutFile::onInsertCommandResponse, this, _1, _2),
-                         bind(&NdnPutFile::onInsertCommandTimeout, this, _1), // Nack
+                         bind(&NdnPutFile::onInsertCommandNack, this, _1), // Nack
                          bind(&NdnPutFile::onInsertCommandTimeout, this, _1));
 }
 
 void
 NdnPutFile::onInsertCommandResponse(const ndn::Interest& interest, const ndn::Data& data)
 {
+  std::cout<<"Got resoinse Content"<<data<<std::endl;
   RepoCommandResponse response(data.getContent().blockFromValue());
+  //std::cout<<"ResponseInitialized"<<response<<std::endl;
   auto statusCode = response.getCode();
+  std::cout<<"Received Responsewith code : "+statusCode<<std::endl;
   if (statusCode >= 400) {
     BOOST_THROW_EXCEPTION(Error("insert command failed with code " +
                                 boost::lexical_cast<std::string>(statusCode)));
   }
+  std::cout<<"Setting processId: "<<response.getProcessId();
   m_processId = response.getProcessId();
 
   m_scheduler.schedule(m_checkPeriod, [this] { startCheckCommand(); });
+}
+
+void
+NdnPutFile::onInsertCommandNack(const ndn::Interest& interest)
+{
+    BOOST_THROW_EXCEPTION(Error("insertion command nacked"));
+    
 }
 
 void
@@ -273,6 +297,7 @@ NdnPutFile::onInsertCommandTimeout(const ndn::Interest& interest)
 void
 NdnPutFile::onInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
+  std::cout<<"Received Interest"<<interest<<std::endl;
   if (interest.getName().size() != prefix.size() + 1) {
     if (isVerbose) {
       std::cerr << "Error processing incoming interest " << interest << ": "
@@ -308,6 +333,7 @@ NdnPutFile::onInterest(const ndn::Name& prefix, const ndn::Interest& interest)
     uint64_t final = m_currentSegmentNo - 1;
     item->second->setFinalBlock(ndn::name::Component::fromSegment(final));
   }
+  std::cout<<"Transmitting data: "<<*item->second<<std::endl;
   m_face.put(*item->second);
 }
 
@@ -372,18 +398,23 @@ NdnPutFile::signData(ndn::Data& data)
 void
 NdnPutFile::startCheckCommand()
 {
-  ndn::Interest checkInterest = generateCommandInterest(repoPrefix, "insert check",
-                                                        RepoCommandParameter()
-                                                          .setProcessId(m_processId));
+  //TODO: Set Command Parameters
+  RepoCommandParameter parameters;
+  parameters.setName(m_dataPrefix);
+  parameters.setProcessId(m_processId);
+  ndn::Interest checkInterest = generateCommandInterest(repoPrefix, "insertcheck",
+                                                        parameters);
+  std::cout<<"Expressing Check Interest"<<checkInterest<<std::endl;
   m_face.expressInterest(checkInterest,
                          bind(&NdnPutFile::onCheckCommandResponse, this, _1, _2),
-                         bind(&NdnPutFile::onCheckCommandTimeout, this, _1), // Nack
+                         bind(&NdnPutFile::onCheckCommandNack, this, _1), // Nack
                          bind(&NdnPutFile::onCheckCommandTimeout, this, _1));
 }
 
 void
 NdnPutFile::onCheckCommandResponse(const ndn::Interest& interest, const ndn::Data& data)
 {
+  ndn::mgmt::ControlResponse Controlresponse(data.getContent().blockFromValue());
   RepoCommandResponse response(data.getContent().blockFromValue());
   auto statusCode = response.getCode();
   if (statusCode >= 400) {
@@ -393,7 +424,7 @@ NdnPutFile::onCheckCommandResponse(const ndn::Interest& interest, const ndn::Dat
 
   if (m_isFinished) {
     uint64_t insertCount = response.getInsertNum();
-
+    std::cout<<"Insert Num"<<insertCount<<std::endl;
     if (isSingle) {
       if (insertCount == 1) {
         m_face.getIoService().stop();
@@ -410,6 +441,12 @@ NdnPutFile::onCheckCommandResponse(const ndn::Interest& interest, const ndn::Dat
   }
 
   m_scheduler.schedule(m_checkPeriod, [this] { startCheckCommand(); });
+}
+
+void
+NdnPutFile::onCheckCommandNack(const ndn::Interest& interest)
+{
+  BOOST_THROW_EXCEPTION(Error("check response Nacked"));
 }
 
 void
@@ -545,7 +582,7 @@ main(int argc, char** argv)
       std::cerr << "ERROR: cannot open " << argv[2] << std::endl;
       return 2;
     }
-
+    std::cout<<"Reading file"<<argv[2]<<std::endl;
     ndnPutFile.insertStream = &inputFileStream;
     ndnPutFile.run();
   }

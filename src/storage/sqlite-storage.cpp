@@ -69,6 +69,7 @@ SqliteStorage::initializeRepo()
 
   if (rc == SQLITE_OK) {
     // Create a new table named NDN_REPO_V2, distinguish from the old table name(NDN_REPO)
+    std::cout<<"Creating Table NDN_REPO_V2"<<std::endl;
     sqlite3_exec(m_db, "CREATE TABLE NDN_REPO_V2 (name BLOB, data BLOB);", nullptr, nullptr, &errMsg);
     // Ignore errors (when database already exists, errors are expected)
     sqlite3_exec(m_db, "CREATE UNIQUE INDEX index_name ON NDN_REPO_V2 (name);", nullptr, nullptr, &errMsg);
@@ -93,6 +94,7 @@ int64_t
 SqliteStorage::insert(const Data& data)
 {
   Name name = data.getFullName(); // store the full name
+  std::cout<<"Inserting Data: "<<name<<std::endl; 
   ndn::util::Sqlite3Statement stmt(m_db, "INSERT INTO NDN_REPO_V2 (name, data) VALUES (?, ?);");
 
   //Insert
@@ -152,6 +154,7 @@ SqliteStorage::erase(const Name& name)
 std::shared_ptr<Data>
 SqliteStorage::read(const Name& name)
 {
+  std::cout<<"Read data"<<find(name)<<std::endl;
   return find(name);
 }
 
@@ -165,6 +168,7 @@ SqliteStorage::has(const Name& name)
 std::shared_ptr<Data>
 SqliteStorage::find(const Name& name, bool exactMatch)
 {
+  std::cout<<"Trying to find: " << name<<std::endl;
   NDN_LOG_DEBUG("Trying to find: " << name);
   Name nameSuccessor;
   if (!exactMatch) {
@@ -201,14 +205,17 @@ SqliteStorage::find(const Name& name, bool exactMatch)
         data->wireDecode(stmt.getBlock(1));
       }
       catch (const ndn::Block::Error& error) {
+        std::cout<<error.what()<<std::endl;
         NDN_LOG_DEBUG(error.what());
         return nullptr;
       }
       NDN_LOG_DEBUG("Data from db: " << *data);
+      std::cout<<"Data from db: " << *data<<std::endl;
 
       foundName = data->getFullName();
 
       if ((exactMatch && name == foundName) || (!exactMatch && name.isPrefixOf(foundName))) {
+        std::cout<<"Found: " << foundName << " " << stmt.getInt(0)<<std::endl;
         NDN_LOG_DEBUG("Found: " << foundName << " " << stmt.getInt(0));
         return data;
       }

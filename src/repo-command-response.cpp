@@ -125,6 +125,7 @@ RepoCommandResponse::wireEncode() const
   wireEncode(buffer);
 
   m_wire = buffer.block();
+  std::cout<<"Encoded Block"<<m_wire<<std::endl;
   return m_wire;
 }
 
@@ -183,6 +184,7 @@ RepoCommandResponse::wireEncode(EncodingImpl<T>& encoder) const
 
   totalLength += encoder.prependVarNumber(totalLength);
   totalLength += encoder.prependVarNumber(tlv::RepoCommandResponse);
+  std::cout<<"Encoded data: "<<totalLength<<std::endl;
   return totalLength;
 }
 
@@ -195,16 +197,19 @@ RepoCommandResponse::wireDecode(const Block& wire)
   m_hasStatusCode = false;
   m_hasInsertNum = false;
   m_hasDeleteNum = false;
-
   m_wire = wire;
-
+  //m_wire.parse();
+   m_wire.parse();
+if(m_wire.type()==ndn::tlv::nfd::ControlResponse){
+  std::cout<<"This is a Control Response"<<m_wire<<std::endl;
+  m_wire = m_wire.get(tlv::RepoCommandResponse);
   m_wire.parse();
+} 
 
+ std::cout<<"Phased: "<<m_wire<<std::endl;
   Block::element_const_iterator val;
-
   if (m_wire.type() != tlv::RepoCommandResponse)
-    BOOST_THROW_EXCEPTION(Error("RepoCommandResponse malformed"));
-
+    BOOST_THROW_EXCEPTION(Error("RepoCommandResponse malformed, type is "+m_wire.type()));
   // StartBlockId
   val = m_wire.find(tlv::StartBlockId);
   if (val != m_wire.elements_end()) {

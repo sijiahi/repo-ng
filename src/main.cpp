@@ -81,8 +81,9 @@ main(int argc, char** argv)
     repo.initializeStorage();
     repo.enableValidation();
     repo.enableListening();
-
+    std::cout<<"Runnning repo-ng service"<<std::endl;
     ioService.run();
+    
   }
   catch (const std::exception& e) {
     NDN_LOG_FATAL(repo::getExtendedErrorMessage(e));

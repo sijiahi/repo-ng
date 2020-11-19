@@ -21,7 +21,7 @@
 #define REPO_REPO_COMMAND_RESPONSE_HPP
 
 #include "repo-tlv.hpp"
-
+#include <iostream>
 #include <ndn-cxx/mgmt/control-response.hpp>
 #include <ndn-cxx/encoding/block.hpp>
 #include <ndn-cxx/encoding/block-helpers.hpp>
@@ -69,6 +69,7 @@ public:
   explicit
   RepoCommandResponse(const Block& block)
   {
+    std::cout<<"Reading from block"<<block<<std::endl;
     wireDecode(block);
   }
 
