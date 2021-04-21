@@ -169,7 +169,7 @@ std::shared_ptr<Data>
 SqliteStorage::find(const Name& name, bool exactMatch)
 {
   std::cout<<"Trying to find: " << name<<std::endl;
-  NDN_LOG_DEBUG("Trying to find: " << name);
+  //NDN_LOG_DEBUG("Trying to find: " << name);
   Name nameSuccessor;
   if (!exactMatch) {
     nameSuccessor = name.getSuccessor();

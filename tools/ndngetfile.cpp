@@ -138,8 +138,8 @@ void
 Consumer::onVersionedData(const Interest& interest, const Data& data)
 {
   const Name& name = data.getName();
-
-  // the received data name may have segment number or not
+  ////DataName = /DataPrefix/version/segmentID
+  // Received Data Name = Specified Name(Name + version), send Name + segmentID
   if (name.size() == m_dataName.size()) {
     if (!m_isSingle) {
       Name fetchName = name;
@@ -147,6 +147,7 @@ Consumer::onVersionedData(const Interest& interest, const Data& data)
       fetchData(fetchName);
     }
   }
+  // Received Data Name = Specified Name(Name), send Name + versionName + segmentID
   else if (name.size() == m_dataName.size() + 1) {
     if (!m_isSingle) {
       if (m_isFirst) {
@@ -175,7 +176,9 @@ Consumer::onVersionedData(const Interest& interest, const Data& data)
 void
 Consumer::onUnversionedData(const Interest& interest, const Data& data)
 {
+  ////DataName = /DataPrefix/version/segmentID
   const Name& name = data.getName();
+  //Received Data Name = Specified Name + version
   if (name.size() == m_dataName.size() + 1) {
     if (!m_isSingle) {
       Name fetchName = name;
@@ -183,6 +186,7 @@ Consumer::onUnversionedData(const Interest& interest, const Data& data)
       fetchData(fetchName);
     }
   }
+  //Received Data Name = Specified Name + version + SegmentID
   else if (name.size() == m_dataName.size() + 2) {
     if (!m_isSingle) {
        if (m_isFirst) {

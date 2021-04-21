@@ -73,6 +73,7 @@ RepoCommandResponse::setCode(uint32_t statusCode)
 
   RepoCommandResponse* response =
     static_cast<RepoCommandResponse *> (&ndn::mgmt::ControlResponse::setCode(statusCode));
+  m_wire.reset();
   return *response;
 }
 

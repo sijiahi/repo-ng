@@ -53,7 +53,7 @@ ReadHandle::connectAutoListen()
 void
 ReadHandle::onInterest(const Name& prefix, const Interest& interest)
 {
-  std::cout<<"Received Interest " << interest.getName()<<std::endl;
+  std::cout<<"Received Interest " <<prefix <<"exact name"<<interest.getName()<<std::endl;
   NDN_LOG_DEBUG("Received Interest " << interest.getName());
   std::shared_ptr<ndn::Data> data = m_storageHandle.readData(interest);
   if (data != nullptr) {
@@ -104,7 +104,7 @@ ReadHandle::onDataInserted(const Name& name)
 {
   // Note: We want to save the prefix that we register exactly, not the
   // name that provoked the registration
-  Name prefixToRegister = name.getPrefix(-m_prefixSubsetLength);
+  Name prefixToRegister = name.getPrefix(m_prefixSubsetLength);
   ndn::InterestFilter filter(prefixToRegister);
   auto check = m_insertedDataPrefixes.find(prefixToRegister);
   if (check == m_insertedDataPrefixes.end()) {
@@ -114,6 +114,7 @@ ReadHandle::onDataInserted(const Name& name)
     // everything down, anyway. If registration failures are ever
     // considered to be recoverable, we would need to make this
     // atomic.
+    std::cout<<"Filter Prefix"<<filter<<"name"<<name<<"prefixtoregister"<<prefixToRegister<<"m_prefixSubsetLength"<<m_prefixSubsetLength<<std::endl;
     auto hdl = m_face.setInterestFilter(filter,
       [this] (const ndn::InterestFilter& filter, const Interest& interest) {
         // Implicit conversion to Name of filter

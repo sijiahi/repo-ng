@@ -71,9 +71,9 @@ DeleteCommand::DeleteCommand()
 {
   m_requestValidator
     .required(REPO_PARAMETER_NAME)
-    .required(REPO_PARAMETER_START_BLOCK_ID)
-    .required(REPO_PARAMETER_END_BLOCK_ID)
-    .required(REPO_PARAMETER_PROCESS_ID);
+    .optional(REPO_PARAMETER_START_BLOCK_ID)
+    .optional(REPO_PARAMETER_END_BLOCK_ID)
+    .optional(REPO_PARAMETER_PROCESS_ID);
 }
 
 void

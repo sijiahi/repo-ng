@@ -43,12 +43,11 @@ DeleteHandle::handleDeleteCommand(const Name& prefix, const Interest& interest,
                                   const ndn::mgmt::CommandContinuation& done)
 {
   const RepoCommandParameter& repoParameter = dynamic_cast<const RepoCommandParameter&>(parameter);
-
+//
   if (!repoParameter.hasStartBlockId() && !repoParameter.hasEndBlockId()) {
     processSingleDeleteCommand(interest, repoParameter, done);
     return;
   }
-
   processSegmentDeleteCommand(interest, repoParameter, done);
 }
 
@@ -98,7 +97,6 @@ DeleteHandle::processSegmentDeleteCommand(const Interest& interest, const RepoCo
 {
   SegmentNo startBlockId = parameter.hasStartBlockId() ? parameter.getStartBlockId() : 0;
   SegmentNo endBlockId = parameter.getEndBlockId();
-
   Name prefix = parameter.getName();
   uint64_t nDeletedData = 0;
   for (SegmentNo i = startBlockId; i <= endBlockId; i++) {
@@ -110,7 +108,5 @@ DeleteHandle::processSegmentDeleteCommand(const Interest& interest, const RepoCo
   }
   //All the data deleted, return 200
   done(positiveReply(interest, parameter, 200, nDeletedData));
-
 }
-
 } // namespace repo

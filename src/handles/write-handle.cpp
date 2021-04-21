@@ -70,9 +70,8 @@ WriteHandle::handleInsertCommand(const Name& prefix, const Interest& interest,
   std::cout<<"Handling Insert command for Interest: "<<interest<<std::endl;
   RepoCommandParameter* repoParameter =
     dynamic_cast<RepoCommandParameter*>(const_cast<ndn::mgmt::ControlParameters*>(&parameter));
-
   if (repoParameter->hasStartBlockId() || repoParameter->hasEndBlockId()) {
-    std::cout<<"processSegmentedInsertCommand"<<std::endl;
+    std::cout<<"processSegmentedInsertCommand"<<repoParameter->hasStartBlockId()<<std::endl;
     processSegmentedInsertCommand(interest, *repoParameter, done);
   }
   else {
@@ -196,14 +195,16 @@ WriteHandle::onSegmentData(ndn::util::SegmentFetcher& fetcher, const Data& data,
   if (storageHandle.insertData(data)) {
     response.setInsertNum(response.getInsertNum() + 1);
   }
+  if (data.getFinalBlock()){
+    std::cout<<"Final"<<data.getFinalBlock()->toSegment()<<std::endl;
+    response.setEndBlockId(data.getFinalBlock()->toSegment());
+  }
 
   ProcessInfo& process = m_processes[processId];
   //read whether notime timeout
   if (!response.hasEndBlockId()) {
-
     ndn::time::steady_clock::TimePoint& noEndTime = process.noEndTime;
     ndn::time::steady_clock::TimePoint now = ndn::time::steady_clock::now();
-
     if (now > noEndTime) {
       NDN_LOG_DEBUG("noEndtimeout: " << processId);
       //StatusCode should be refreshed as 405
@@ -214,7 +215,6 @@ WriteHandle::onSegmentData(ndn::util::SegmentFetcher& fetcher, const Data& data,
       return;
     }
   }
-
   //read whether this process has total ends, if ends, remove control info from the maps
   if (response.hasEndBlockId()) {
     uint64_t nSegments = response.getEndBlockId() - response.getStartBlockId() + 1;

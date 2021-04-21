@@ -100,7 +100,8 @@ private:
 ///////////////////////////////
   void
   onInsertCommandTimeout(const ndn::Interest& interest);
-
+  void
+  onInterestSelect(const ndn::Name& prefix, const ndn::Interest& interest);
   void
   onInterest(const ndn::Name& prefix, const ndn::Interest& interest);
 
@@ -220,16 +221,11 @@ NdnPutFile::run()
   if (isVerbose)
     std::cerr << "setInterestFilter for " << m_dataPrefix << std::endl;
   m_face.setInterestFilter(m_dataPrefix,
-                           isSingle ?
-                           bind(&NdnPutFile::onSingleInterest, this, _1, _2)
-                           :
-                           bind(&NdnPutFile::onInterest, this, _1, _2),
+                           bind(&NdnPutFile::onInterestSelect, this, _1, _2),
                            bind(&NdnPutFile::onRegisterSuccess, this, _1),
                            bind(&NdnPutFile::onRegisterFailed, this, _1, _2));
-
   if (hasTimeout)
     m_scheduler.schedule(timeout, [this] { stopProcess(); });
-
   m_face.processEvents();
 }
 
@@ -295,6 +291,82 @@ NdnPutFile::onInsertCommandTimeout(const ndn::Interest& interest)
 }
 
 void
+NdnPutFile::onInterestSelect(const ndn::Name& prefix, const ndn::Interest& interest)
+{
+    uint8_t buffer[DEFAULT_BLOCK_SIZE];
+    std::streamsize readSize =
+    boost::iostreams::read(*insertStream, reinterpret_cast<char*>(buffer), DEFAULT_BLOCK_SIZE);
+
+  if (readSize <= 0) {
+    BOOST_THROW_EXCEPTION(Error("Error reading from the input stream at Begining !"));
+  }
+
+  if (insertStream->peek() != std::istream::traits_type::eof()) {
+            std::cout<<"Received Interest"<<interest<<std::endl;
+          if (interest.getName().size() != prefix.size() + 1) {
+            if (isVerbose) {
+              std::cerr << "Error processing incoming interest " << interest << ": "
+                        << "Unrecognized Interest" << std::endl;
+            }
+            return;
+          }
+
+          uint64_t segmentNo;
+          try {
+            ndn::Name::Component segmentComponent = interest.getName().get(prefix.size());
+            segmentNo = segmentComponent.toSegment();
+          }
+          catch (const tlv::Error& e) {
+            if (isVerbose) {
+              std::cerr << "Error processing incoming interest " << interest << ": "
+                        << e.what() << std::endl;
+            }
+            return;
+          }
+
+          prepareNextData(segmentNo);
+
+          DataContainer::iterator item = m_data.find(segmentNo);
+          if (item == m_data.end()) {
+            if (isVerbose) {  
+              std::cerr << "Requested segment [" << segmentNo << "] does not exist" << std::endl;
+            }
+            return;
+          }
+
+          if (m_isFinished) {
+            uint64_t final = m_currentSegmentNo - 1;
+            item->second->setFinalBlock(ndn::name::Component::fromSegment(final));
+          }
+          std::cout<<"Transmitting data: "<<*item->second<<std::endl;
+          m_face.put(*item->second);
+  }
+  else{
+          BOOST_ASSERT(prefix == m_dataPrefix);
+          std::cerr << "Received unexpected interest " << interest.getName() <<"\nExpecting Prefix: "<<prefix<<std::endl;
+          if (prefix != interest.getName()) {
+            if (isVerbose) {
+              std::cerr << "Received unexpected interest " << interest << std::endl;
+            }
+            return;
+          }
+          if (readSize <= 0) {
+            BOOST_THROW_EXCEPTION(Error("Error reading from the input stream"));
+          }
+
+          if (insertStream->peek() != std::istream::traits_type::eof()) {
+            BOOST_THROW_EXCEPTION(Error("Input data does not fit into one Data packet"));
+          }
+
+          auto data = make_shared<ndn::Data>(m_dataPrefix);
+          data->setContent(buffer, readSize);
+          data->setFreshnessPeriod(freshnessPeriod);
+          signData(*data);
+          m_face.put(*data);
+          m_isFinished = true;
+  }
+}
+void
 NdnPutFile::onInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
   std::cout<<"Received Interest"<<interest<<std::endl;
@@ -341,7 +413,8 @@ void
 NdnPutFile::onSingleInterest(const ndn::Name& prefix, const ndn::Interest& interest)
 {
   BOOST_ASSERT(prefix == m_dataPrefix);
-
+std::cerr << "Received unexpected interest " << interest.getName() <<"\nExpecting Prefix: "<<prefix<<std::endl;
+        
   if (prefix != interest.getName()) {
     if (isVerbose) {
       std::cerr << "Received unexpected interest " << interest << std::endl;

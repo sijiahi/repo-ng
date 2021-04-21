@@ -59,7 +59,7 @@ public:
     , m_hasProcessId(false)
     , m_hasInsertNum(false)
     , m_hasDeleteNum(false)
-    , m_hasStatusCode(false)
+    , m_hasStatusCode(true)
   {
   }
 
